@@ -1,0 +1,41 @@
+{
+  "collectionName": "components_details_variants",
+  "info": {
+    "displayName": "variant",
+    "icon": "chartBubble",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "color": {
+      "type": "string"
+    },
+    "capacity": {
+      "type": "string"
+    },
+    "price": {
+      "type": "decimal",
+      "default": 0,
+      "required": false
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "isAvailable": {
+      "type": "boolean",
+      "default": true
+    },
+    "stock": {
+      "type": "integer",
+      "default": 1
+    }
+  }
+}
