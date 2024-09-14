@@ -11,7 +11,15 @@ module.exports = {
     // Find the category by name (assuming 'name' is a unique identifier)
     const categoryEntity = await strapi.db.query('api::category.category').findOne({
       where: { name: categoryName },
-      populate: { products: true }, // Adjust if needed
+      populate: {
+        products: {
+          populate: {
+            images: true,      // Populate images for products
+            components: true,  // Populate components for products
+          },
+        },
+        images: true,  // Populate images for the category
+      },
     });
 
     if (!categoryEntity) {
@@ -21,14 +29,30 @@ module.exports = {
     // Return products associated with the category
     return ctx.send(categoryEntity.products);
   },
+
   async find(ctx) {
-    const entities = await strapi.db.query('api::category.category').findMany();
+    const entities = await strapi.db.query('api::category.category').findMany({
+      populate: {        
+        image: true,  // Populate images for the category
+      },
+    });
     return ctx.send(entities);
   },
 
   async findOne(ctx) {
     const { id } = ctx.params;
-    const entity = await strapi.db.query('api::category.category').findOne({ where: { id } });
+    const entity = await strapi.db.query('api::category.category').findOne({
+      where: { id },
+      populate: {
+        products: {
+          populate: {
+            images: true,      // Populate images for products
+            components: true,  // Populate components for products
+          },
+        },
+        images: true,  // Populate images for the category
+      },
+    });
     if (!entity) {
       return ctx.notFound('Category not found');
     }
