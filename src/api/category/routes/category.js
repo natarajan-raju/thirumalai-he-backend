@@ -1,15 +1,11 @@
 'use strict';
 
-/**
- * category router
- */
-const { createCoreRouter } = require('@strapi/strapi').factories;
 module.exports = {
   routes: [
     {
       method: 'GET',
-      path: '/categories',
-      handler: 'category.find',
+      path: '/categories/:categoryName/products',
+      handler: 'category.findProductsByCategoryName',
       config: {
         policies: [],
         middlewares: [],
@@ -19,6 +15,15 @@ module.exports = {
       method: 'GET',
       path: '/categories/:id',
       handler: 'category.findOne',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/categories',
+      handler: 'category.find',
       config: {
         policies: [],
         middlewares: [],
@@ -46,15 +51,6 @@ module.exports = {
       method: 'DELETE',
       path: '/categories/:id',
       handler: 'category.delete',
-      config: {
-        policies: [],
-        middlewares: [],
-      },
-    },
-    {
-      method: 'GET',
-      path: '/categories/:categoryName/products',
-      handler: 'category.findProductsByCategory',
       config: {
         policies: [],
         middlewares: [],

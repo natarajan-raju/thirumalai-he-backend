@@ -1,56 +1,23 @@
 'use strict';
 
-/**
- * A set of functions called "actions" for `category`
- */
-
 module.exports = {
-  async findProductsByCategory(ctx) {
-    const { categoryName } = ctx.params;
-
-    // Find the category by name (assuming 'name' is a unique identifier)
-    const categoryEntity = await strapi.db.query('api::category.category').findOne({
-      where: { name: categoryName },
-      populate: {
-        products: {
-          populate: {
-            images: true,      // Populate images for products
-            components: true,  // Populate components for products
-          },
-        },
-        images: true,  // Populate images for the category
-      },
-    });
-
-    if (!categoryEntity) {
-      return ctx.notFound('Category not found');
-    }
-
-    // Return products associated with the category
-    return ctx.send(categoryEntity.products);
-  },
-
+  // Override the `find` function
   async find(ctx) {
     const entities = await strapi.db.query('api::category.category').findMany({
-      populate: {        
-        image: true,  // Populate images for the category
+      populate: {
+        image: true,  // Only populate images for the category
       },
     });
     return ctx.send(entities);
   },
 
+  // Override the `findOne` function
   async findOne(ctx) {
     const { id } = ctx.params;
     const entity = await strapi.db.query('api::category.category').findOne({
       where: { id },
       populate: {
-        products: {
-          populate: {
-            images: true,      // Populate images for products
-            components: true,  // Populate components for products
-          },
-        },
-        images: true,  // Populate images for the category
+        image: true,  // Only populate images for the category
       },
     });
     if (!entity) {
@@ -59,16 +26,63 @@ module.exports = {
     return ctx.send(entity);
   },
 
+  // New function to find category by name
+  async findProductsByCategoryName(ctx) {
+    const { categoryName } = ctx.params;
+  
+    // Step 1: Use Knex to perform a case-insensitive search for the category
+    const categoryEntity = await strapi.db.connection('categories')
+      .whereRaw('LOWER(name) = ?', categoryName.toLowerCase())
+      .first();
+  
+    if (!categoryEntity) {
+      return ctx.notFound('Category not found');
+    }
+  
+    // Step 2: Fetch the category and populate the image (using Strapi's query)
+    const category = await strapi.db.query('api::category.category').findOne({
+      where: { id: categoryEntity.id },
+      populate: {
+        image: true, // Populate category image
+      },
+    });
+  
+    // Step 3: Fetch products related to the category
+    const products = await strapi.db.query('api::product.product').findMany({
+      where: {
+        categories: category.id, // Assuming categories is the correct relation field
+      },
+      populate: ['company','variant.images','feature'],
+    });
+  
+    // Step 4: Return combined result
+    const result = {
+      category,
+      products,
+    };
+  
+    return ctx.send(result);
+  },  
+  
+  
+
+  // Add back the `create` function
   async create(ctx) {
     const { body } = ctx.request;
-    const entity = await strapi.db.query('api::category.category').create({ data: body });
+    const entity = await strapi.db.query('api::category.category').create({
+      data: body,
+    });
     return ctx.send(entity);
   },
 
+  // Ensure update and delete are defined too
   async update(ctx) {
     const { id } = ctx.params;
     const { body } = ctx.request;
-    const entity = await strapi.db.query('api::category.category').update({ where: { id }, data: body });
+    const entity = await strapi.db.query('api::category.category').update({
+      where: { id },
+      data: body,
+    });
     if (!entity) {
       return ctx.notFound('Category not found');
     }
@@ -77,7 +91,9 @@ module.exports = {
 
   async delete(ctx) {
     const { id } = ctx.params;
-    const entity = await strapi.db.query('api::category.category').delete({ where: { id } });
+    const entity = await strapi.db.query('api::category.category').delete({
+      where: { id },
+    });
     if (!entity) {
       return ctx.notFound('Category not found');
     }

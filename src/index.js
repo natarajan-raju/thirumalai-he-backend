@@ -1,6 +1,6 @@
 'use strict';
 
-const { routes } = require("./api/category/routes/category");
+
 
 
 
