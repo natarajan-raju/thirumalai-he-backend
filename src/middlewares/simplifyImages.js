@@ -5,6 +5,12 @@ module.exports = (config, { strapi }) => {
     // Call the next middleware (which could be the controller)
     await next();
 
+    // Ensure the middleware only processes JSON responses (avoid processing admin panel assets)
+    if (!ctx.response.is('application/json')) {
+      // Skip non-JSON responses (like HTML or static files)
+      return;
+    }
+
     // Recursive function to simplify image objects to { name, url }
     const simplifyImages = (data) => {
       if (Array.isArray(data)) {
@@ -39,8 +45,6 @@ module.exports = (config, { strapi }) => {
 
     // Check if the response body exists and process it
     if (ctx.body) {
-    //   console.log('Original Data:', JSON.stringify(ctx.body, null, 2)); // Log the original data
-
       // Handle arrays or objects and modify the image structure
       if (Array.isArray(ctx.body)) {
         ctx.body = ctx.body.map(simplifyImages);
@@ -55,8 +59,6 @@ module.exports = (config, { strapi }) => {
         // Handle general objects
         ctx.body = simplifyImages(ctx.body);
       }
-
-    //   console.log('Processed Data:', JSON.stringify(ctx.body, null, 2)); // Log the modified data
     } else {
       console.log('No response body found to process.');
     }
