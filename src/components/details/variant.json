@@ -36,6 +36,9 @@
     "stock": {
       "type": "integer",
       "default": 1
+    },
+    "packQuantity": {
+      "type": "string"
     }
   }
 }

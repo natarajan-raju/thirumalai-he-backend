@@ -26,6 +26,7 @@ export interface DetailsVariant extends Schema.Component {
     images: Attribute.Media<'images' | 'files' | 'videos' | 'audios', true>;
     isAvailable: Attribute.Boolean & Attribute.DefaultTo<true>;
     stock: Attribute.Integer & Attribute.DefaultTo<1>;
+    packQuantity: Attribute.String;
   };
 }
 
