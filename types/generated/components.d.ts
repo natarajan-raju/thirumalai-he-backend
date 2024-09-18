@@ -1,17 +1,5 @@
 import type { Schema, Attribute } from '@strapi/strapi';
 
-export interface FeatureFeatures extends Schema.Component {
-  collectionName: 'components_feature_features';
-  info: {
-    displayName: 'features';
-    icon: 'bulletList';
-  };
-  attributes: {
-    title: Attribute.String;
-    description: Attribute.Text;
-  };
-}
-
 export interface DetailsVariant extends Schema.Component {
   collectionName: 'components_details_variants';
   info: {
@@ -30,11 +18,23 @@ export interface DetailsVariant extends Schema.Component {
   };
 }
 
+export interface FeatureFeatures extends Schema.Component {
+  collectionName: 'components_feature_features';
+  info: {
+    displayName: 'features';
+    icon: 'bulletList';
+  };
+  attributes: {
+    title: Attribute.String;
+    description: Attribute.Text;
+  };
+}
+
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
-      'feature.features': FeatureFeatures;
       'details.variant': DetailsVariant;
+      'feature.features': FeatureFeatures;
     }
   }
 }
