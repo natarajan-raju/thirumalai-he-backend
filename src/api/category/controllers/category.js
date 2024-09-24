@@ -1,6 +1,8 @@
 'use strict';
 
-module.exports = {
+const { createCoreController } = require('@strapi/strapi').factories;
+
+module.exports = createCoreController('api::category.category', ({ strapi }) => ({
   // Override the `find` function
   async find(ctx) {
     const entities = await strapi.db.query('api::category.category').findMany({
@@ -66,37 +68,4 @@ module.exports = {
   
   
 
-  // Add back the `create` function
-  async create(ctx) {
-    const { body } = ctx.request;
-    const entity = await strapi.db.query('api::category.category').create({
-      data: body,
-    });
-    return ctx.send(entity);
-  },
-
-  // Ensure update and delete are defined too
-  async update(ctx) {
-    const { id } = ctx.params;
-    const { body } = ctx.request;
-    const entity = await strapi.db.query('api::category.category').update({
-      where: { id },
-      data: body,
-    });
-    if (!entity) {
-      return ctx.notFound('Category not found');
-    }
-    return ctx.send(entity);
-  },
-
-  async delete(ctx) {
-    const { id } = ctx.params;
-    const entity = await strapi.db.query('api::category.category').delete({
-      where: { id },
-    });
-    if (!entity) {
-      return ctx.notFound('Category not found');
-    }
-    return ctx.send(entity);
-  },
-};
+}));
