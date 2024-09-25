@@ -4,17 +4,8 @@ module.exports = {
   routes: [
     {
       method: 'POST',
-      path: '/userCart', // Custom route for creating or updating the cart
-      handler: 'cart.userCart', 
-      config: {
-        policies: [],
-        middlewares: [],
-      },
-    },
-    {
-      method: 'PUT',
-      path: '/userCart', // Custom route for adding items to existing cart
-      handler: 'cart.addItemsToCart', 
+      path: '/userCart',
+      handler: 'cart.userCart', // Custom route to handle adding/updating cart
       config: {
         policies: [],
         middlewares: [],
@@ -22,8 +13,16 @@ module.exports = {
     },
     {
       method: 'DELETE',
-      path: '/userCart/item/:productId', // Custom route for removing a specific item
-      handler: 'cart.removeItemFromCart', 
+      path: '/userCart', // Custom route to remove a specific item via payload
+      handler: 'cart.removeItemFromCart',
+      config: {
+        auth: { scope: ['authenticated'] }, // Ensure user is authenticated
+      },
+    },
+    {
+      method: 'GET',
+      path: '/userCart', // Custom route to fetch user's cart
+      handler: 'cart.find',
       config: {
         policies: [],
         middlewares: [],

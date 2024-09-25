@@ -12,16 +12,10 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "items": {
+    "item": {
       "type": "component",
       "repeatable": true,
       "component": "items.cart-item"
-    },
-    "user": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "plugin::users-permissions.user",
-      "inversedBy": "cart"
     }
   }
 }
