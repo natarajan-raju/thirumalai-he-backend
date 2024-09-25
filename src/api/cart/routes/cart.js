@@ -13,10 +13,11 @@ module.exports = {
     },
     {
       method: 'DELETE',
-      path: '/userCart', // Custom route to remove a specific item via payload
+      "path": "/userCart/delete", // quantity is optional
       handler: 'cart.removeItemFromCart',
       config: {
-        auth: { scope: ['authenticated'] }, // Ensure user is authenticated
+        policies: [],
+        middlewares: [],
       },
     },
     {

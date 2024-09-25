@@ -63,35 +63,50 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
 
   // Remove a product from the cart (using payload)
   async removeItemFromCart(ctx) {
-    // @ts-ignore
-    const { productId } = ctx.request.body; // Product ID in payload
+    const { productId, quantity } = ctx.query; // Get productId and quantity from query parameters
+    console.log(productId);
     const userId = ctx.state.user.id;
 
     let cart = await strapi.entityService.findMany('api::cart.cart', {
-      // @ts-ignore
-      filters: { userId },
-      populate: ['item', 'item.product'],
+        filters: { userId },
+        populate: ['item', 'item.product'],
     });
 
     if (!cart.length) {
-      return ctx.notFound('Cart not found');
+        return ctx.notFound('Cart not found');
     }
 
-    // @ts-ignore
     cart = cart[0];
-    // @ts-ignore
-    cart.item = cart.item.filter(singleItem => singleItem.product !== productId);
 
-    // @ts-ignore
+    // Find the index of the item in the cart
+    const itemIndex = cart.item.findIndex(singleItem => singleItem.product.id === parseInt(productId));
+
+    if (itemIndex === -1) {
+        return ctx.notFound('Product not found in cart');
+    }
+
+    // If quantity is specified, reduce it; otherwise, remove the item completely
+    if (quantity) {
+        cart.item[itemIndex].quantity -= parseInt(quantity);
+
+        // If the quantity goes to zero or below, remove the item
+        if (cart.item[itemIndex].quantity <= 0) {
+            cart.item.splice(itemIndex, 1);
+        }
+    } else {
+        // Remove the item if no quantity is specified
+        cart.item.splice(itemIndex, 1);
+    }
+
+    // Update the cart with the new item array
     const updatedCart = await strapi.entityService.update('api::cart.cart', cart.id, {
-      data: {
-        // @ts-ignore
-        item: cart.item,
-      },
+        data: {
+            item: cart.item,
+        },
     });
 
     return updatedCart;
-  },
+},
 
   // Fetch the user's cart
   async find(ctx) {
@@ -100,7 +115,7 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     const cart = await strapi.entityService.findMany('api::cart.cart', {
       // @ts-ignore
       filters: { userId },
-      populate: ['item', 'item.product'],
+      populate: ['item', 'item.product','item.product.variant','item.product.variant.images'],
     });
 
     if (!cart.length) {
