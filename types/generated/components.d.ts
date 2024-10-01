@@ -14,18 +14,9 @@ export interface ItemsCartItem extends Schema.Component {
       'api::product.product'
     >;
     quantity: Attribute.Integer;
-  };
-}
-
-export interface FeatureFeatures extends Schema.Component {
-  collectionName: 'components_feature_features';
-  info: {
-    displayName: 'features';
-    icon: 'bulletList';
-  };
-  attributes: {
-    title: Attribute.String;
-    description: Attribute.Text;
+    variantId: Attribute.Integer;
+    price: Attribute.Decimal & Attribute.DefaultTo<0>;
+    image: Attribute.String;
   };
 }
 
@@ -47,12 +38,24 @@ export interface DetailsVariant extends Schema.Component {
   };
 }
 
+export interface FeatureFeatures extends Schema.Component {
+  collectionName: 'components_feature_features';
+  info: {
+    displayName: 'features';
+    icon: 'bulletList';
+  };
+  attributes: {
+    title: Attribute.String;
+    description: Attribute.Text;
+  };
+}
+
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
       'items.cart-item': ItemsCartItem;
-      'feature.features': FeatureFeatures;
       'details.variant': DetailsVariant;
+      'feature.features': FeatureFeatures;
     }
   }
 }

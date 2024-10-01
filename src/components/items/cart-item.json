@@ -14,6 +14,16 @@
     },
     "quantity": {
       "type": "integer"
+    },
+    "variantId": {
+      "type": "integer"
+    },
+    "price": {
+      "type": "decimal",
+      "default": 0
+    },
+    "image": {
+      "type": "string"
     }
   }
 }

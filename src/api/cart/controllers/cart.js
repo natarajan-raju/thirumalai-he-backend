@@ -1,64 +1,108 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 
+// @ts-ignore
 module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
   // Custom method to create or update the cart for the authenticated user
   async userCart(ctx) {
     // @ts-ignore
-    const { item } = ctx.request.body; // Destructure the item from the request body
+    if (!ctx.request.body || !ctx.request.body.item) {
+        return ctx.badRequest('Invalid request. Item details missing.');
+      }
+    // @ts-ignore
+    const { item } = ctx.request.body;
+      
+    const { productId, variantId, quantity } = item[0];
 
-    // Check if `item` is provided and is an array
-    if (!item || !Array.isArray(item)) {
-      return ctx.badRequest('Item must be an array');
+    if(!productId || !variantId || !quantity) {
+        return ctx.badRequest('Invalid request. Item details missing.');
     }
 
-    // Find the cart for the authenticated user (without user relation logic)
+    const {product,variant,isSuccess,fetchMessage} = await fetchProductVariant(productId,variantId);
+    
+      if (!isSuccess) {
+        // Return error if the product does not exist
+        return ctx.badRequest(fetchMessage);
+      }
+      let url = variant[0]?.images?.[0]?.url || '';
+    // Step 3: Product and variant are valid; Proceed with cart logic
+    // Fetch the user's cart or create a new one if not present
+    const userId = ctx.state.user.id;
     let userCart = await strapi.entityService.findMany('api::cart.cart', {
-      populate: ['item', 'item.product'], // Populate product relation within items
+      // @ts-ignore
+      filters: { user: userId },
+      populate: ['item'],
     });
-
-    if (!userCart.length) {
-      // If no cart exists, create a new one with the provided item
+    // If no cart exists, create a new one
+    if (userCart.length === 0) {    
+      
       // @ts-ignore
       userCart = await strapi.entityService.create('api::cart.cart', {
         data: {
-          item: item.map(singleItem => ({
-            product: singleItem.product, // ID of the product
-            quantity: singleItem.quantity,
-          })),
-          publishedAt: new Date(), // Publish immediately
-        },
+          user: userId,
+          item: [{ product,variantId, quantity,"price": variant[0].price,image: url }],
+            totalQuantity: quantity,
+            totalPrice: variant[0].price * quantity,
+            publishedAt: new Date().toISOString(),
+          },
       });
     } else {
-      // Cart exists, check if the product is already in the cart
-      const existingCart = userCart[0];
+      //A cart already exist. Check if the variant is already in the cart
       // @ts-ignore
-      const updatedItems = [...existingCart.item];
-
-      item.forEach(singleItem => {
-        const existingItemIndex = updatedItems.findIndex(cartItem => cartItem.product.id === singleItem.product);
-
-        if (existingItemIndex !== -1) {
-          // If the product exists, update its quantity
-          updatedItems[existingItemIndex].quantity += singleItem.quantity;
-        } else {
-          // If the product does not exist, add it to the cart
-          updatedItems.push({
-            product: singleItem.product,
-            quantity: singleItem.quantity,
-          });
-        }
-      });
-
-      // Update the cart with new or updated items
-      // @ts-ignore
-      userCart = await strapi.entityService.update('api::cart.cart', existingCart.id, {
-        data: {
-          item: updatedItems,
-        },
-      });
+      let itemIndex = userCart[0].item.findIndex(
+        (singleItem) => singleItem.variantId === variantId
+      );
+      if (itemIndex === -1) {
+        // The item with the specified variant is not in the cart, so add it.
+        // let url = `${variant[0].images[0].url}`;
+        const newItem = { product, variantId, quantity, price: variant[0].price,image: url };
+      
+        // Calculate updated totalQuantity and totalPrice
+        const updatedQuantity = userCart[0].totalQuantity + quantity;
+        const updatedPrice = userCart[0].totalPrice + variant[0].price * quantity;
+      
+        // Update the cart with the new item and new totals
+        // @ts-ignore
+        userCart = await strapi.entityService.update('api::cart.cart', userCart[0].id, {
+          data: {
+            // @ts-ignore
+            item: [...userCart[0].item, newItem], // Add the new item to the existing array
+            totalQuantity: updatedQuantity,
+            totalPrice: updatedPrice,
+          },
+        });
+      } else{
+        //Variant already exist. So lets update the quantity and price of the existing variant and recalculate total price and total quantity
+        const existingCart = userCart[0];
+        // @ts-ignore
+        const existingItem = existingCart.item[itemIndex];
+        // Update existingItem quantity and price
+        // @ts-ignore
+        existingItem.quantity += quantity;
+        // @ts-ignore
+        existingItem.price += variant[0].price * quantity;
+        // Calculate updated totalQuantity and totalPrice
+        const updatedQuantity = existingCart.totalQuantity + quantity;
+        const updatedPrice = existingCart.totalPrice + variant[0].price * quantity;
+        // Update the cart with the new item and new totals
+        // @ts-ignore
+        userCart = await strapi.entityService.update('api::cart.cart', existingCart.id, {
+          data: {
+            // @ts-ignore
+            item: [...existingCart.item], // Add the new item to the existing array
+            totalQuantity: updatedQuantity,
+            totalPrice: updatedPrice,
+          },
+        });
+        
+      }
+     
     }
-
-    return userCart;
+    //Sanitize output and return
+    // @ts-ignore
+    return {
+      userCart,
+      message: 'Cart updated successfully',
+    }
   },
 
   // Remove a product from the cart (using payload)
@@ -68,6 +112,7 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     const userId = ctx.state.user.id;
 
     let cart = await strapi.entityService.findMany('api::cart.cart', {
+        // @ts-ignore
         filters: { userId },
         populate: ['item', 'item.product'],
     });
@@ -76,9 +121,11 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
         return ctx.notFound('Cart not found');
     }
 
+    // @ts-ignore
     cart = cart[0];
 
     // Find the index of the item in the cart
+    // @ts-ignore
     const itemIndex = cart.item.findIndex(singleItem => singleItem.product.id === parseInt(productId));
 
     if (itemIndex === -1) {
@@ -87,20 +134,26 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
 
     // If quantity is specified, reduce it; otherwise, remove the item completely
     if (quantity) {
+        // @ts-ignore
         cart.item[itemIndex].quantity -= parseInt(quantity);
 
         // If the quantity goes to zero or below, remove the item
+        // @ts-ignore
         if (cart.item[itemIndex].quantity <= 0) {
+            // @ts-ignore
             cart.item.splice(itemIndex, 1);
         }
     } else {
         // Remove the item if no quantity is specified
+        // @ts-ignore
         cart.item.splice(itemIndex, 1);
     }
 
     // Update the cart with the new item array
+    // @ts-ignore
     const updatedCart = await strapi.entityService.update('api::cart.cart', cart.id, {
         data: {
+            // @ts-ignore
             item: cart.item,
         },
     });
@@ -125,3 +178,37 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     return cart[0];
   },
 }));
+
+async function fetchProductVariant(productId,variantId){
+  let isSuccess = false;
+  let fetchMessage = 'fetching';
+  const product = await strapi.entityService.findOne('api::product.product', productId, {
+    // @ts-ignore      
+    populate: ['variant','variant.images'],
+  })
+  
+    if (!product) {
+      fetchMessage = `Product with the given Id: ${productId} not found`;
+      // Return error if the product does not exist
+      return {product,variant: null,isSuccess,fetchMessage};
+    }
+    
+    // Step 2: Check if the variant exists inside the product
+    // @ts-ignore
+    const variant = product.variant.filter((v) => v.id === variantId);
+    
+
+    if (variant.length === 0) {
+      // Return error if the variant is not found in the product
+      fetchMessage = `Variant with the given Id: ${variantId} not found`;
+      return {product,variant,isSuccess,fetchMessage};
+    }
+
+    isSuccess = true;
+    return {
+      product,
+      variant,
+      isSuccess,
+      fetchMessage: 'Product with variant successfully fetched'
+    }
+}

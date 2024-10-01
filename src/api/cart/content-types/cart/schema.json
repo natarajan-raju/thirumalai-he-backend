@@ -16,6 +16,14 @@
       "type": "component",
       "repeatable": true,
       "component": "items.cart-item"
+    },
+    "totalQuantity": {
+      "type": "integer",
+      "default": 0
+    },
+    "totalPrice": {
+      "type": "integer",
+      "default": 0
     }
   }
 }
