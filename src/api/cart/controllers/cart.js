@@ -107,59 +107,87 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
 
   // Remove a product from the cart (using payload)
   async removeItemFromCart(ctx) {
-    const { productId, quantity } = ctx.query; // Get productId and quantity from query parameters
-    console.log(productId);
-    const userId = ctx.state.user.id;
-
-    let cart = await strapi.entityService.findMany('api::cart.cart', {
-        // @ts-ignore
-        filters: { userId },
-        populate: ['item', 'item.product'],
-    });
-
-    if (!cart.length) {
-        return ctx.notFound('Cart not found');
+    const { productId, quantity, variantId } = ctx.query; // Get productId, quantity, and variantId from query parameters
+  
+    // Fetch the product variant to ensure it exists and is valid
+    const { isSuccess, fetchMessage } = await fetchProductVariant(productId, variantId);
+    if (!isSuccess) {
+      return ctx.badRequest(fetchMessage);
     }
-
+  
+    const userId = ctx.state.user.id;
+  
+    // Find the user's cart and populate the items and related product data
+    let cart = await strapi.entityService.findMany('api::cart.cart', {
+      // @ts-ignore
+      filters: { user: userId }, // Ensure we filter by the correct user
+      populate: ['item', 'item.product'],
+    });
+  
+    if (!cart.length) {
+      return ctx.notFound('Cart not found');
+    }
+  
+    // Get the first cart (since each user should have only one)
     // @ts-ignore
     cart = cart[0];
-
-    // Find the index of the item in the cart
+  
+    // Find the index of the item in the cart using the variantId
     // @ts-ignore
-    const itemIndex = cart.item.findIndex(singleItem => singleItem.product.id === parseInt(productId));
-
+    const itemIndex = cart.item.findIndex(singleItem => singleItem.variantId === parseInt(variantId));
+  
     if (itemIndex === -1) {
-        return ctx.notFound('Product not found in cart');
+      return ctx.notFound('Product not found in cart');
     }
-
-    // If quantity is specified, reduce it; otherwise, remove the item completely
+  
+    // Get the existing item to adjust its quantity and price values
+    // @ts-ignore
+    const existingItem = cart.item[itemIndex];
+  
+    // If quantity is specified in the request, reduce it; otherwise, remove the item completely
     if (quantity) {
-        // @ts-ignore
-        cart.item[itemIndex].quantity -= parseInt(quantity);
-
-        // If the quantity goes to zero or below, remove the item
-        // @ts-ignore
-        if (cart.item[itemIndex].quantity <= 0) {
-            // @ts-ignore
-            cart.item.splice(itemIndex, 1);
-        }
-    } else {
-        // Remove the item if no quantity is specified
+      // @ts-ignore
+      const quantityToRemove = parseInt(quantity);
+  
+      // Decrease the quantity of the existing item
+      existingItem.quantity -= quantityToRemove;
+      // @ts-ignore
+      cart.totalQuantity -= quantityToRemove;
+      // @ts-ignore
+      cart.totalPrice -= quantityToRemove * existingItem.price;
+      // If the quantity goes to zero or below, remove the item from the cart
+      if (existingItem.quantity <= 0) {
         // @ts-ignore
         cart.item.splice(itemIndex, 1);
+      } 
+    } else {
+      // Remove the item from the cart if no quantity is specified
+      // @ts-ignore
+      // cart.item.splice(itemIndex, 1);
+      console.log(existingItem);
     }
+  
 
-    // Update the cart with the new item array
+  
+    // Update the cart with the new item array and the recalculated totals
     // @ts-ignore
     const updatedCart = await strapi.entityService.update('api::cart.cart', cart.id, {
-        data: {
-            // @ts-ignore
-            item: cart.item,
-        },
+      data: {
+        // @ts-ignore
+        item: cart.item, // Update the items array
+        // @ts-ignore
+        totalQuantity: cart.totalQuantity, // Set the new total quantity
+        // @ts-ignore
+        totalPrice: cart.totalPrice, // Set the new total price
+      },
     });
-
-    return updatedCart;
-},
+  
+    return {
+      updatedCart,
+      message: 'Item removed successfully',
+    };
+  }
+  ,
 
   // Fetch the user's cart
   async find(ctx) {
@@ -168,7 +196,7 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     const cart = await strapi.entityService.findMany('api::cart.cart', {
       // @ts-ignore
       filters: { userId },
-      populate: ['item', 'item.product','item.product.variant','item.product.variant.images'],
+      populate: ['item', 'item.product'],
     });
 
     if (!cart.length) {
@@ -195,7 +223,8 @@ async function fetchProductVariant(productId,variantId){
     
     // Step 2: Check if the variant exists inside the product
     // @ts-ignore
-    const variant = product.variant.filter((v) => v.id === variantId);
+    
+    const variant = product.variant.filter((v) => v.id === parseInt(variantId));
     
 
     if (variant.length === 0) {
