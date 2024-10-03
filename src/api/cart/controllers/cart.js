@@ -3,6 +3,7 @@ const { createCoreController } = require('@strapi/strapi').factories;
 // @ts-ignore
 module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
   // Custom method to create or update the cart for the authenticated user
+  // @ts-ignore
   async userCart(ctx) {
     // @ts-ignore
     if (!ctx.request.body || !ctx.request.body.item) {
@@ -27,9 +28,10 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     // Step 3: Product and variant are valid; Proceed with cart logic
     // Fetch the user's cart or create a new one if not present
     const userId = ctx.state.user.id;
+    
     let userCart = await strapi.entityService.findMany('api::cart.cart', {
       // @ts-ignore
-      filters: { user: userId },
+      filters: { users_permissions_user: userId },
       populate: ['item'],
     });
     // If no cart exists, create a new one
@@ -38,7 +40,7 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
       // @ts-ignore
       userCart = await strapi.entityService.create('api::cart.cart', {
         data: {
-          user: userId,
+          users_permissions_user: userId,
           item: [{ product,variantId, quantity,"price": variant[0].price,image: url }],
             totalQuantity: quantity,
             totalPrice: variant[0].price * quantity,
@@ -106,6 +108,7 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
   },
 
   // Remove a product from the cart (using payload)
+  // @ts-ignore
   async removeItemFromCart(ctx) {
     const { productId, quantity, variantId } = ctx.query; // Get productId, quantity, and variantId from query parameters
   
@@ -120,7 +123,7 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     // Find the user's cart and populate the items and related product data
     let cart = await strapi.entityService.findMany('api::cart.cart', {
       // @ts-ignore
-      filters: { user: userId }, // Ensure we filter by the correct user
+      filters: { users_permissions_user: userId }, // Ensure we filter by the correct user
       populate: ['item', 'item.product'],
     });
   
@@ -148,7 +151,10 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     if (quantity) {
       // @ts-ignore
       const quantityToRemove = parseInt(quantity);
-  
+      if(quantityToRemove > existingItem.quantity){
+        console.log(quantity,quantityToRemove,existingItem.quantity);
+        return ctx.badRequest('Quantity to remove is greater than quantity in cart');
+      }
       // Decrease the quantity of the existing item
       existingItem.quantity -= quantityToRemove;
       // @ts-ignore
@@ -163,8 +169,8 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     } else {
       // Remove the item from the cart if no quantity is specified
       // @ts-ignore
-      // cart.item.splice(itemIndex, 1);
-      console.log(existingItem);
+      cart.item.splice(itemIndex, 1);
+      
     }
   
 
@@ -190,21 +196,75 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
   ,
 
   // Fetch the user's cart
+  // @ts-ignore
   async find(ctx) {
     const userId = ctx.state.user.id;
 
     const cart = await strapi.entityService.findMany('api::cart.cart', {
       // @ts-ignore
-      filters: { userId },
-      populate: ['item', 'item.product'],
+      filters: { users_permissions_user: userId },
+      populate: ['item', 'item.product','users_permissions_user'],
     });
 
     if (!cart.length) {
       return ctx.notFound('Cart not found');
     }
-
-    return cart[0];
+    // @ts-ignore
+    const { id, totalQuantity, totalPrice, item, users_permissions_user} = cart[0];
+    return {
+      id,
+      totalQuantity,
+      totalPrice,
+      item,
+      // @ts-ignore
+      userID: users_permissions_user.id,
+      // @ts-ignore
+      userName: users_permissions_user.username
+    }
+  // @ts-ignore
   },
+
+  //Override core findOne
+  //Restrict cart access to own cart
+  // @ts-ignore
+  async findOne(ctx) {
+    // @ts-ignore
+    const { userId } = ctx.state.user;
+    // @ts-ignore
+    
+    const { id: cartId } = ctx.params;
+    
+    const cart = await strapi.entityService.findOne('api::cart.cart', parseInt(cartId), {
+      filters: { users_permissions_user: userId },
+      populate: {
+        item: {
+          populate: ['product'], // Populate product inside item
+        },
+        users_permissions_user: {
+          fields: ['id', 'username'], // Select specific fields in users_permissions_user
+        },
+      },
+    });
+    console.log(cart.id,cartId);
+    const { id, totalQuantity, totalPrice, item, users_permissions_user} = cart;
+    // @ts-ignore
+    if (!cart || parseInt(cart.id) !== parseInt(cartId)) {
+      return ctx.forbidden('You do not have permission to access this cart.');
+    }
+
+    return {
+      id,
+      totalQuantity,
+      totalPrice,
+      item,
+      // @ts-ignore
+      userID: users_permissions_user.id,
+      // @ts-ignore
+      userName: users_permissions_user.username   
+    };
+  // @ts-ignore
+  },
+// @ts-ignore
 }));
 
 async function fetchProductVariant(productId,variantId){

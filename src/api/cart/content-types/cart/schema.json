@@ -24,6 +24,12 @@
     "totalPrice": {
       "type": "integer",
       "default": 0
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "cart"
     }
   }
 }

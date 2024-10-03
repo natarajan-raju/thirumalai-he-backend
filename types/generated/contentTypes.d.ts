@@ -770,6 +770,11 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       'manyToOne',
       'plugin::users-permissions.role'
     >;
+    cart: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'oneToOne',
+      'api::cart.cart'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -802,6 +807,11 @@ export interface ApiCartCart extends Schema.CollectionType {
     item: Attribute.Component<'items.cart-item', true>;
     totalQuantity: Attribute.Integer & Attribute.DefaultTo<0>;
     totalPrice: Attribute.Integer & Attribute.DefaultTo<0>;
+    users_permissions_user: Attribute.Relation<
+      'api::cart.cart',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
