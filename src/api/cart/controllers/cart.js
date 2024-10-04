@@ -187,9 +187,11 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
         totalPrice: cart.totalPrice, // Set the new total price
       },
     });
-  
+    
     return {
       updatedCart,
+      // @ts-ignore
+      item: cart.item,
       message: 'Item removed successfully',
     };
   }
