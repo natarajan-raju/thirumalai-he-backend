@@ -1,3 +1,4 @@
+// @ts-ignore
 const { createCoreController } = require('@strapi/strapi').factories;
 
 // @ts-ignore
@@ -41,7 +42,7 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
       userCart = await strapi.entityService.create('api::cart.cart', {
         data: {
           users_permissions_user: userId,
-          item: [{ product,variantId, quantity,"price": variant[0].price,image: url }],
+          item: [{ product,variantId, quantity,price: variant[0].price * quantity,value: variant[0].price,image: url }],
             totalQuantity: quantity,
             totalPrice: variant[0].price * quantity,
             publishedAt: new Date().toISOString(),
@@ -56,7 +57,7 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
       if (itemIndex === -1) {
         // The item with the specified variant is not in the cart, so add it.
         // let url = `${variant[0].images[0].url}`;
-        const newItem = { product, variantId, quantity, price: variant[0].price,image: url };
+        const newItem = { product, variantId, quantity, price: variant[0].price * quantity,value: variant[0].price,image: url };
       
         // Calculate updated totalQuantity and totalPrice
         const updatedQuantity = userCart[0].totalQuantity + quantity;
@@ -146,13 +147,13 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     // Get the existing item to adjust its quantity and price values
     // @ts-ignore
     const existingItem = cart.item[itemIndex];
-  
+    
     // If quantity is specified in the request, reduce it; otherwise, remove the item completely
     if (quantity) {
       // @ts-ignore
       const quantityToRemove = parseInt(quantity);
       if(quantityToRemove > existingItem.quantity){
-        console.log(quantity,quantityToRemove,existingItem.quantity);
+       
         return ctx.badRequest('Quantity to remove is greater than quantity in cart');
       }
       // Decrease the quantity of the existing item
@@ -160,16 +161,22 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
       // @ts-ignore
       cart.totalQuantity -= quantityToRemove;
       // @ts-ignore
-      cart.totalPrice -= quantityToRemove * existingItem.price;
+      cart.totalPrice -= quantityToRemove * existingItem.value;
+      existingItem.price -= existingItem.value * quantityToRemove; 
+      cart.item[itemIndex] = existingItem; 
+      console.log(cart);
       // If the quantity goes to zero or below, remove the item from the cart
       if (existingItem.quantity <= 0) {
         // @ts-ignore
-        cart.item.splice(itemIndex, 1);
+        cart.item.splice(itemIndex, 1);        
       } 
     } else {
+      cart.totalQuantity -= existingItem.quantity;
+      cart.totalPrice -= existingItem.price;
       // Remove the item from the cart if no quantity is specified
-      // @ts-ignore
+      // @ts-ignore      
       cart.item.splice(itemIndex, 1);
+      // @ts-ignore
       
     }
   

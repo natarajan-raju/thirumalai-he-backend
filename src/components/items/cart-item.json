@@ -24,6 +24,9 @@
     },
     "image": {
       "type": "string"
+    },
+    "value": {
+      "type": "decimal"
     }
   }
 }
