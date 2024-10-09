@@ -70,6 +70,12 @@
       "relation": "oneToOne",
       "target": "api::cart.cart",
       "mappedBy": "users_permissions_user"
+    },
+    "profileImageURL": {
+      "type": "string"
+    },
+    "profileImageID": {
+      "type": "integer"
     }
   }
 }
